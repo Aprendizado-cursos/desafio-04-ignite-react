@@ -22,14 +22,16 @@ export default function Home(): JSX.Element {
   async function dataFetch(obj: {
     pageParam?: string;
   }): Promise<AxiosReturnData> {
-    const { data } = await api.get<AxiosReturnData>(
-      `api/images?after=${obj.pageParam ? obj.pageParam : ''}`
-    );
+    const { data } = await api.get<AxiosReturnData>(`api/images`, {
+      params: {
+        after: obj.pageParam,
+      },
+    });
     return data;
   }
 
   function getNextPageParam(data: AxiosReturnData): string | null {
-    return data.after ? data.after : null;
+    return data ? data.after : null;
   }
 
   const {
@@ -43,14 +45,20 @@ export default function Home(): JSX.Element {
     getNextPageParam,
   });
 
-  const formattedData = useMemo(
-    () => data?.pages.map(page => page.data).flat(),
-    [data]
-  );
+  const formattedData = useMemo(() => {
+    const formatted = data?.pages.flatMap(imageData => {
+      return imageData.data.flat();
+    });
+    return formatted;
+  }, [data]);
 
-  if (isLoading) return <Loading />;
+  if (isLoading && !isError) {
+    return <Loading />;
+  }
 
-  if (isError) return <Error />;
+  if (!isLoading && isError) {
+    return <Error />;
+  }
 
   return (
     <>
@@ -59,7 +67,11 @@ export default function Home(): JSX.Element {
       <Box maxW={1120} px={20} mx="auto" my={20}>
         <CardList cards={formattedData} />
         {hasNextPage && (
-          <Button onClick={() => fetchNextPage()} mt="40px">
+          <Button
+            onClick={() => fetchNextPage()}
+            mt="40px"
+            disabled={isFetchingNextPage}
+          >
             {isFetchingNextPage ? 'Carregando...' : 'Carregar mais'}
           </Button>
         )}
